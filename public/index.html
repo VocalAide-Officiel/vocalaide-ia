@@ -149,6 +149,22 @@
 				font-size: 0.85rem;
 				color: #000000;
 			}
+
+			.btn-aide-fixe {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
 		</style>
 	</head>
 	<body>
@@ -187,5 +203,9 @@
 
 		<!-- Chat app script -->
 		<script src="chat.js"></script>
+
+		<a href="https://vocalaide.org/compte/aide" class="btn-aide-fixe">
+    Besoin d'aide ?
+</a>
 	</body>
 </html>
