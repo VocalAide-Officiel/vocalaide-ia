@@ -1,36 +1,55 @@
 /**
- * VocalAide IA - Cloudflare Worker AI
- * Version: 2.0 (Modes & Résumé Premium)
+ * LLM Chat Application Template
+ *
+ * A simple chat application using Cloudflare Workers AI.
+ * This template demonstrates how to implement an LLM-powered chat interface with
+ * streaming responses using Server-Sent Events (SSE).
+ *
+ * @license MIT
  */
 import { Env, ChatMessage } from "./types";
 
+// Model ID for Workers AI model
 const MODEL_ID = "@cf/meta/llama-3.1-8b-instruct-fp8";
 
-const BAD_WORDS = ["calisse", "tabarnak", "osti", "crisse", "merde", "fuck", "chier", "pendre", "connard", "cul", "pénis", "nègre", "negre", "neger", "negresse", "gueule"];
+// Configuration du filtre et mot de passe
+// Liste de mots mise à jour
+const BAD_WORDS = ["calisse", "tabarnak", "osti", "crisse", "merde", "fuck", "chier", "pendre", "connard", "cul", "pénis", "nègre", "negre", "neger", "negresse", "gueule"]; 
 const UNLOCK_PASSWORD = "1234";
 
-// --- DÉFINITION DES PROMPTS SELON LES MODES ---
-const BASE_INSTRUCTION = "\n\nIMPORTANT : Si on te demande par qui tu as été créé, réponds uniquement 'VocalAide'.";
-
-const SYSTEM_PROMPTS = {
-	empathique: "Agis en tant que VocalAide IA (Mode Empathique). Ta priorité est la validation émotionnelle. Utilise l'écoute active, reformule les sentiments et sois très doux. Ton but est que l'utilisateur se sente pleinement entendu et soutenu." + BASE_INSTRUCTION,
-	
-	coach: "Agis en tant que VocalAide IA (Mode Coach). Sois direct, motivant et axé sur les solutions. Utilise des techniques de coaching de vie pour aider l'utilisateur à fixer des objectifs et à passer à l'action. Pas de complaisance, mais de la bienveillance active." + BASE_INSTRUCTION,
-	
-	meditatif: "Agis en tant que VocalAide IA (Mode Méditatif). Parle lentement (utilise des phrases courtes). Encourage l'ancrage dans le moment présent, la respiration et la pleine conscience. Aide l'utilisateur à se détacher de ses pensées anxieuses." + BASE_INSTRUCTION,
-
-	resume: "Agis en tant que VocalAide IA (Expert Analyste). Analyse l'historique de cette conversation et rédige un 'Résumé de la semaine' structuré pour un professionnel de santé (Psychologue). Inclus : 1. Thèmes principaux abordés, 2. État émotionnel dominant, 3. Progrès ou points de blocage identifiés. Sois clinique et précis." + BASE_INSTRUCTION
-};
+// Default system prompt
+const SYSTEM_PROMPT =
+	"Agis en tant que VocalAide IA, expert en soutien émotionnel. Ta priorité absolue est la validation empathique : avant toute analyse, reflète le sentiment de l'utilisateur pour qu'il se sente entendu. Utilise une approche de type TCC et communication non-violente pour guider l'exploration de soi via des questions ouvertes et brèves. Garde un ton calme, concis et sécurisant. En cas de crise, stabilise l'utilisateur par l'ancrage immédiat (respiration) et oriente-le avec douceur vers des ressources humaines professionnelles. IMPORTANT : Si on te demande par qui tu as été créé ou qui est ton créateur, tu dois répondre uniquement que tu as été créé par VocalAide.";
 
 export default {
-	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+	/**
+	 * Main request handler for the Worker
+	 */
+	async fetch(
+		request: Request,
+		env: Env,
+		ctx: ExecutionContext,
+	): Promise<Response> {
 		const url = new URL(request.url);
-		if (url.pathname === "/" || !url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
-		if (url.pathname === "/api/chat" && request.method === "POST") return handleChatRequest(request, env);
+
+		if (url.pathname === "/" || !url.pathname.startsWith("/api/")) {
+			return env.ASSETS.fetch(request);
+		}
+
+		if (url.pathname === "/api/chat") {
+			if (request.method === "POST") {
+				return handleChatRequest(request, env);
+			}
+			return new Response("Method not allowed", { status: 405 });
+		}
+
 		return new Response("Not found", { status: 404 });
 	},
 } satisfies ExportedHandler<Env>;
 
+/**
+ * Creates a fake SSE stream to bypass the AI when blocked
+ */
 function createFakeStreamResponse(text: string): Response {
 	const encoder = new TextEncoder();
 	const stream = new ReadableStream({
@@ -41,72 +60,111 @@ function createFakeStreamResponse(text: string): Response {
 			controller.close();
 		},
 	});
-	return new Response(stream, { headers: { "content-type": "text/event-stream" } });
+
+	return new Response(stream, {
+		headers: {
+			"content-type": "text/event-stream; charset=utf-8",
+			"cache-control": "no-cache",
+			connection: "keep-alive",
+		},
+	});
 }
 
-async function handleChatRequest(request: Request, env: Env): Promise<Response> {
+/**
+ * Handles chat API requests
+ */
+async function handleChatRequest(
+	request: Request,
+	env: Env,
+): Promise<Response> {
 	try {
-		// On récupère les messages ET le ton choisi (par défaut 'empathique')
-		const { messages = [], tone = "empathique" } = (await request.json()) as {
+		const { messages = [] } = (await request.json()) as {
 			messages: ChatMessage[];
-			tone: string;
 		};
 
-		// 1. Analyse de l'historique (Blocage / Insultes)
+		// 1. Analyse de l'historique pour gérer l'état de blocage
 		let isLocked = false;
-		let currentStatus = "normal";
+		let currentStatus = "normal"; // statuts possibles : "normal", "just_locked", "wrong_password", "just_unlocked"
 
 		for (const msg of messages) {
 			if (msg.role === "user") {
-				const text = msg.content.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-				const hasBadWord = BAD_WORDS.some(word => text.includes(word));
+				// On met en minuscules ET on enlève les accents pour la vérification
+				const text = msg.content
+					.toLowerCase()
+					.normalize("NFD")
+					.replace(/[\u0300-\u036f]/g, "");
+
+				// On vérifie si un mauvais mot est présent
+				const hasBadWord = BAD_WORDS.some((word) => {
+					const normalizedWord = word
+						.toLowerCase()
+						.normalize("NFD")
+						.replace(/[\u0300-\u036f]/g, "");
+					return text.includes(normalizedWord);
+				});
 
 				if (hasBadWord) {
+					// 🚨 Mauvais mot détecté : on verrouille
 					isLocked = true;
 					currentStatus = "just_locked";
 				} else if (isLocked && msg.content.trim() === UNLOCK_PASSWORD) {
+					// 🔑 Bon mot de passe entré : on déverrouille
 					isLocked = false;
 					currentStatus = "just_unlocked";
 				} else if (isLocked) {
+					// ❌ Toujours verrouillé et ce n'est pas le bon mot de passe
 					currentStatus = "wrong_password";
 				} else {
+					// ✅ Pas verrouillé, pas de mauvais mot : tout est normal
 					currentStatus = "normal";
 				}
 			}
 		}
 
-		// Interception Sécurité
-		if (currentStatus === "just_locked") return createFakeStreamResponse("🚨 Blocage : Langage inapproprié. Entrez le code.");
-		if (currentStatus === "wrong_password") return createFakeStreamResponse("Mauvais mot de passe.");
-		if (currentStatus === "just_unlocked") return createFakeStreamResponse("Mot de passe accepté. Comment puis-je vous aider ?");
-
-		// 2. Sélection du PROMPT SYSTÈME
-		// Si le dernier message contient "résumé", on force le mode résumé
-		const lastMessage = messages[messages.length - 1].content.toLowerCase();
-		let selectedPrompt = SYSTEM_PROMPTS[tone as keyof typeof SYSTEM_PROMPTS] || SYSTEM_PROMPTS.empathique;
-		
-		if (lastMessage.includes("résumé") || lastMessage.includes("bilan pour mon psy")) {
-			selectedPrompt = SYSTEM_PROMPTS.resume;
+		// 2. Interception de la requête selon le statut final du dernier message
+		if (currentStatus === "just_locked") {
+			return createFakeStreamResponse(
+				"Langage inapproprié détecté. Le chat a été bloqué. Veuillez entrer le mot de passe pour continuer.",
+			);
+		}
+		if (currentStatus === "wrong_password") {
+			return createFakeStreamResponse("Mauvais mot de passe.");
+		}
+		if (currentStatus === "just_unlocked") {
+			return createFakeStreamResponse(
+				"Mot de passe accepté. Le chat est débloqué. Comment puis-je vous aider ?",
+			);
 		}
 
-		// On injecte le prompt système choisi
-		messages.unshift({ role: "system", content: selectedPrompt });
+		// 3. Suite normale (si currentStatus est "normal") : on envoie à l'IA
+		if (!messages.some((msg) => msg.role === "system")) {
+			messages.unshift({ role: "system", content: SYSTEM_PROMPT });
+		}
 
-		// 3. Appel à l'IA
-		const stream = await env.AI.run(MODEL_ID, {
-			messages,
-			max_tokens: 1500, // Plus de tokens pour permettre un résumé long
-			stream: true,
-		});
+		const stream = await env.AI.run(
+			MODEL_ID,
+			{
+				messages,
+				max_tokens: 1024,
+				stream: true,
+			},
+		);
 
 		return new Response(stream, {
 			headers: {
-				"content-type": "text/event-stream",
+				"content-type": "text/event-stream; charset=utf-8",
 				"cache-control": "no-cache",
 				connection: "keep-alive",
 			},
 		});
 	} catch (error) {
-		return new Response(JSON.stringify({ error: "Erreur serveur" }), { status: 500 });
+		console.error("Error processing chat request:", error);
+		return new Response(
+			JSON.stringify({ error: "Failed to process request" }),
+			{
+				status: 500,
+				headers: { "content-type": "application/json" },
+			},
+		);
 	}
 }
