@@ -7,10 +7,10 @@
 const chatMessages = document.getElementById("chat-messages");
 const userInput = document.getElementById("user-input");
 const sendButton = document.getElementById("send-button");
-const typingIndicator = document.getElementById("typing-indicator");
+const typingIndicator = document.getElementById("typing"); // Correspond à l'ID dans le nouveau HTML
 
 // Chat state
-let chatHistory = []; // On commence vide car le message de bienvenue est déjà en dur dans le HTML
+let chatHistory = []; 
 let isProcessing = false;
 
 // Auto-resize textarea as user types
@@ -52,7 +52,7 @@ async function sendMessage() {
 	userInput.style.height = "auto";
 
 	// Show typing indicator
-	typingIndicator.style.display = "block"; // Utilise le style display car c'est ce qu'on a mis dans l'HTML
+	if(typingIndicator) typingIndicator.style.display = "block";
 
 	// Add message to history
 	chatHistory.push({ role: "user", content: message });
@@ -68,7 +68,7 @@ async function sendMessage() {
 		// Scroll to bottom
 		chatMessages.scrollTop = chatMessages.scrollHeight;
 
-		// --- MODIFICATION ICI : On envoie le 'tone' ---
+		// On envoie le 'tone' défini dans le HTML
 		const response = await fetch("/api/chat", {
 			method: "POST",
 			headers: {
@@ -76,17 +76,12 @@ async function sendMessage() {
 			},
 			body: JSON.stringify({
 				messages: chatHistory,
-				tone: window.currentTone || 'empathique' // Utilise la variable globale du HTML
+				tone: window.currentTone || 'empathique' 
 			}),
 		});
 
-		// Handle errors
-		if (!response.ok) {
-			throw new Error("Failed to get response");
-		}
-		if (!response.body) {
-			throw new Error("Response body is null");
-		}
+		if (!response.ok) throw new Error("Erreur réseau");
+		if (!response.body) throw new Error("Pas de corps de réponse");
 
 		// Process streaming response
 		const reader = response.body.getReader();
@@ -139,21 +134,22 @@ async function sendMessage() {
 			if (sawDone) break;
 		}
 
-		// Add completed response to chat history
+		// AJOUT IMPORTANT : Fin de réponse
 		if (responseText.length > 0) {
 			chatHistory.push({ role: "assistant", content: responseText });
+            
+            // Si l'utilisateur a cliqué sur "Rapport PDF", on lance la génération
+            if (window.isGeneratingPdf) {
+                setTimeout(() => {
+                    window.triggerPdfDownload(responseText);
+                }, 500); // Petit délai pour laisser l'UI respirer
+            }
 		}
 	} catch (error) {
 		console.error("Error:", error);
-		addMessageToChat(
-			"assistant",
-			"Désolé, une erreur est survenue lors du traitement de votre demande.",
-		);
+		addMessageToChat("assistant", "Désolé, une erreur technique est survenue.");
 	} finally {
-		// Hide typing indicator
-		typingIndicator.style.display = "none";
-
-		// Re-enable input
+		if(typingIndicator) typingIndicator.style.display = "none";
 		isProcessing = false;
 		userInput.disabled = false;
 		sendButton.disabled = false;
@@ -168,10 +164,8 @@ function addMessageToChat(role, content) {
 	const messageEl = document.createElement("div");
 	messageEl.className = `message ${role}-message`;
 	messageEl.innerHTML = `<p></p>`;
-    messageEl.querySelector("p").textContent = content; // Plus sécuritaire contre les injections
+    messageEl.querySelector("p").textContent = content;
 	chatMessages.appendChild(messageEl);
-
-	// Scroll to bottom
 	chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
