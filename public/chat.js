@@ -1,6 +1,5 @@
 /**
- * LLM Chat App Frontend
- *
+ * LLM Chat App Frontend - VocalAide IA
  * Handles the chat UI interactions and communication with the backend API.
  */
 
@@ -11,13 +10,7 @@ const sendButton = document.getElementById("send-button");
 const typingIndicator = document.getElementById("typing-indicator");
 
 // Chat state
-let chatHistory = [
-	{
-		role: "assistant",
-		content:
-			"Hello! I'm VocalAide, an LLM chat application powered by Cloudflare Workers' AI. How can I help you today?",
-	},
-];
+let chatHistory = []; // On commence vide car le message de bienvenue est déjà en dur dans le HTML
 let isProcessing = false;
 
 // Auto-resize textarea as user types
@@ -51,7 +44,7 @@ async function sendMessage() {
 	userInput.disabled = true;
 	sendButton.disabled = true;
 
-	// Add user message to chat
+	// Add user message to chat UI
 	addMessageToChat("user", message);
 
 	// Clear input
@@ -59,7 +52,7 @@ async function sendMessage() {
 	userInput.style.height = "auto";
 
 	// Show typing indicator
-	typingIndicator.classList.add("visible");
+	typingIndicator.style.display = "block"; // Utilise le style display car c'est ce qu'on a mis dans l'HTML
 
 	// Add message to history
 	chatHistory.push({ role: "user", content: message });
@@ -75,7 +68,7 @@ async function sendMessage() {
 		// Scroll to bottom
 		chatMessages.scrollTop = chatMessages.scrollHeight;
 
-		// Send request to API
+		// --- MODIFICATION ICI : On envoie le 'tone' ---
 		const response = await fetch("/api/chat", {
 			method: "POST",
 			headers: {
@@ -83,6 +76,7 @@ async function sendMessage() {
 			},
 			body: JSON.stringify({
 				messages: chatHistory,
+				tone: window.currentTone || 'empathique' // Utilise la variable globale du HTML
 			}),
 		});
 
@@ -99,6 +93,7 @@ async function sendMessage() {
 		const decoder = new TextDecoder();
 		let responseText = "";
 		let buffer = "";
+		
 		const flushAssistantText = () => {
 			assistantTextEl.textContent = responseText;
 			chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -109,68 +104,39 @@ async function sendMessage() {
 			const { done, value } = await reader.read();
 
 			if (done) {
-				// Process any remaining complete events in buffer
 				const parsed = consumeSseEvents(buffer + "\n\n");
 				for (const data of parsed.events) {
-					if (data === "[DONE]") {
-						break;
-					}
+					if (data === "[DONE]") break;
 					try {
 						const jsonData = JSON.parse(data);
-						// Handle both Workers AI format (response) and OpenAI format (choices[0].delta.content)
-						let content = "";
-						if (
-							typeof jsonData.response === "string" &&
-							jsonData.response.length > 0
-						) {
-							content = jsonData.response;
-						} else if (jsonData.choices?.[0]?.delta?.content) {
-							content = jsonData.choices[0].delta.content;
-						}
+						let content = jsonData.response || jsonData.choices?.[0]?.delta?.content || "";
 						if (content) {
 							responseText += content;
 							flushAssistantText();
 						}
-					} catch (e) {
-						console.error("Error parsing SSE data as JSON:", e, data);
-					}
+					} catch (e) {}
 				}
 				break;
 			}
 
-			// Decode chunk
 			buffer += decoder.decode(value, { stream: true });
 			const parsed = consumeSseEvents(buffer);
 			buffer = parsed.buffer;
 			for (const data of parsed.events) {
 				if (data === "[DONE]") {
 					sawDone = true;
-					buffer = "";
 					break;
 				}
 				try {
 					const jsonData = JSON.parse(data);
-					// Handle both Workers AI format (response) and OpenAI format (choices[0].delta.content)
-					let content = "";
-					if (
-						typeof jsonData.response === "string" &&
-						jsonData.response.length > 0
-					) {
-						content = jsonData.response;
-					} else if (jsonData.choices?.[0]?.delta?.content) {
-						content = jsonData.choices[0].delta.content;
-					}
+					let content = jsonData.response || jsonData.choices?.[0]?.delta?.content || "";
 					if (content) {
 						responseText += content;
 						flushAssistantText();
 					}
-				} catch (e) {
-					console.error("Error parsing SSE data as JSON:", e, data);
-				}
+				} catch (e) {}
 			}
-			if (sawDone) {
-				break;
-			}
+			if (sawDone) break;
 		}
 
 		// Add completed response to chat history
@@ -181,11 +147,11 @@ async function sendMessage() {
 		console.error("Error:", error);
 		addMessageToChat(
 			"assistant",
-			"Sorry, there was an error processing your request.",
+			"Désolé, une erreur est survenue lors du traitement de votre demande.",
 		);
 	} finally {
 		// Hide typing indicator
-		typingIndicator.classList.remove("visible");
+		typingIndicator.style.display = "none";
 
 		// Re-enable input
 		isProcessing = false;
@@ -196,12 +162,13 @@ async function sendMessage() {
 }
 
 /**
- * Helper function to add message to chat
+ * Helper function to add message to chat UI
  */
 function addMessageToChat(role, content) {
 	const messageEl = document.createElement("div");
 	messageEl.className = `message ${role}-message`;
-	messageEl.innerHTML = `<p>${content}</p>`;
+	messageEl.innerHTML = `<p></p>`;
+    messageEl.querySelector("p").textContent = content; // Plus sécuritaire contre les injections
 	chatMessages.appendChild(messageEl);
 
 	// Scroll to bottom
