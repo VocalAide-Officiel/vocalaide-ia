@@ -6,95 +6,122 @@
     <title>VocalAide IA</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link rel="icon" type="image/png" href="https://static.wixstatic.com/media/3852f6_ec244183f7d94d7a8d513e68e877ba8d~mv2.png" />
-    
     <style>
         :root {
-            --primary: #f6821f;
-            --primary-dark: #e67e22;
-            --bg-glass: rgba(255, 255, 255, 0.9);
+            --primary-color: #f6821f;
+            --primary-hover: #e67e22;
+            --light-bg: rgba(249, 250, 251, 0.9);
+            --border-color: #e5e7eb;
+            --text-color: #1f2937;
+            --user-msg-bg: #fff2e6;
+            --assistant-msg-bg: #ffffff;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            font-family: 'Segoe UI', sans-serif;
-            height: 100vh; /* Fixe la hauteur à l'écran */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            height: 100vh;
             overflow: hidden; /* Empêche la page de descendre */
             display: flex;
             flex-direction: column;
-            background: url('https://scontent-yyz1-1.xx.fbcdn.net/v/t39.30808-6/504456449_122107993778891724_6806407475622829072_n.jpg?_nc_cat=101&ccb=1-7&_nc_sid=53a332&_nc_ohc=L07Lc8pLZy8Q7kNvwFgNAB1&_nc_oc=Adp1xqmJJifXROGGrNV1WXNKvNw4o6PInnzDxY9ri9-AXUZz_5LSvXx45gRx6R-_mGk&_nc_zt=23&_nc_ht=scontent-yyz1-1.xx&_nc_gid=1hWS81IUXIC40ntOvN0-sQ&_nc_ss=7b2a8&oh=00_Af15newSodAcTMcFFMTscIolYGfC9BjvrExFVpHy2uUfhg&oe=69F20C91') no-repeat center center fixed;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.8)), 
+                              url('https://scontent-yyz1-1.xx.fbcdn.net/v/t39.30808-6/504456449_122107993778891724_6806407475622829072_n.jpg?_nc_cat=101&ccb=1-7&_nc_sid=53a332&_nc_ohc=L07Lc8pLZy8Q7kNvwFgNAB1&_nc_oc=Adp1xqmJJifXROGGrNV1WXNKvNw4o6PInnzDxY9ri9-AXUZz_5LSvXx45gRx6R-_mGk&_nc_zt=23&_nc_ht=scontent-yyz1-1.xx&_nc_gid=1hWS81IUXIC40ntOvN0-sQ&_nc_ss=7b2a8&oh=00_Af15newSodAcTMcFFMTscIolYGfC9BjvrExFVpHy2uUfhg&oe=69F20C91');
             background-size: cover;
-            padding: 20px;
+            background-attachment: fixed;
+            padding: 1rem;
         }
 
-        header { text-align: center; margin-bottom: 10px; }
-        header h1 { color: var(--primary); font-size: 1.6rem; }
+        header { text-align: center; margin-bottom: 1rem; border-bottom: 4px solid var(--primary-color); padding-bottom: 5px; }
+        header h1 { font-size: 1.5rem; color: var(--primary-color); }
 
-        .mode-container { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; }
-        .mode-card { 
-            background: white; padding: 8px 15px; border-radius: 20px; cursor: pointer; 
-            font-size: 0.9rem; border: 2px solid transparent; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        /* SÉLECTEUR DE MODES */
+        .mode-selector {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
         }
-        .mode-card.active { border-color: var(--primary); color: var(--primary); font-weight: bold; }
+        .mode-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--primary-color);
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: 0.3s;
+        }
+        .mode-btn.active { background: var(--primary-color); color: white; font-weight: bold; }
 
-        /* Conteneur principal qui contient le chat */
-        .app-wrapper {
-            max-width: 850px;
+        /* CHAT CONTAINER */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 800px;
             width: 100%;
             margin: 0 auto;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            background: var(--bg-glass);
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            background: var(--light-bg);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
             overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.4);
         }
 
-        #chat-messages {
-            flex-grow: 1;
+        .chat-messages {
+            flex: 1;
             overflow-y: auto;
-            padding: 20px;
+            padding: 1rem;
             display: flex;
             flex-direction: column;
-            gap: 12px;
         }
 
-        .message { max-width: 80%; padding: 12px 16px; border-radius: 15px; line-height: 1.4; }
-        .assistant-message { background: white; align-self: flex-start; border-bottom-left-radius: 2px; }
-        .user-message { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .message { margin-bottom: 1rem; padding: 0.8rem; border-radius: 12px; max-width: 85%; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .user-message { background-color: var(--user-msg-bg); align-self: flex-end; border-bottom-right-radius: 2px; }
+        .assistant-message { background-color: var(--assistant-msg-bg); align-self: flex-start; border-bottom-left-radius: 2px; }
 
-        .input-bar { padding: 15px; background: white; display: flex; gap: 10px; border-top: 1px solid #eee; }
-        textarea { flex-grow: 1; border: 1px solid #ddd; border-radius: 8px; padding: 10px; resize: none; outline: none; }
-        #send-button { background: var(--primary); color: white; border: none; padding: 0 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .message-input { display: flex; padding: 1rem; background: white; border-top: 1px solid var(--border-color); }
+        #user-input { flex: 1; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; resize: none; outline: none; }
+        #send-button { margin-left: 0.5rem; padding: 0 1.2rem; background-color: var(--primary-color); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
 
-        /* Footer fixe en bas */
-        footer {
-            text-align: center;
-            padding: 15px;
-            font-size: 0.8rem;
-            color: #444;
-        }
+        .typing-indicator { display: none; font-style: italic; color: var(--primary-color); padding: 5px 1rem; font-size: 0.8rem; }
 
-        /* Boutons flottants */
-        .action-buttons {
+        /* BOUTONS ACTIONS */
+        .action-group {
             position: fixed;
             bottom: 60px;
-            right: 25px;
+            right: 20px;
             display: flex;
             flex-direction: column;
             gap: 10px;
+            z-index: 1000;
         }
-        .btn { 
-            padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: bold; 
-            border: none; cursor: pointer; font-size: 0.85rem; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        .btn-action {
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 0.85rem;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: 0.2s;
+            text-align: center;
         }
-        .btn-pdf { background: #34495e; color: white; }
-        .btn-help { background: var(--primary); color: white; }
+        .btn-pdf { background: #2c3e50; color: white; }
+        .btn-aide { background: var(--primary-color); color: white; }
+
+        footer {
+            padding: 10px;
+            text-align: center;
+            font-size: 0.8rem;
+            background: rgba(255,255,255,0.5);
+            margin-top: 5px;
+        }
 
         @media (max-width: 600px) {
-            .action-buttons { position: static; margin-top: 10px; flex-direction: row; justify-content: center; }
+            .action-group { position: static; flex-direction: row; justify-content: center; margin-top: 10px; }
             body { height: auto; overflow: auto; }
         }
     </style>
@@ -103,31 +130,31 @@
 
 <header>
     <h1>Chat VocalAide IA</h1>
-    <p style="font-size: 0.8rem; opacity: 0.8;">Espace de bien-être numérique</p>
+    <p style="font-size: 0.8rem; color: #555;">Espace de bien-être numérique</p>
 </header>
 
-<div class="mode-container">
-    <div class="mode-card active" onclick="changeMode('empathique', this)">🌿 Empathique</div>
-    <div class="mode-card" onclick="changeMode('coach', this)">🚀 Coach</div>
-    <div class="mode-card" onclick="changeMode('meditatif', this)">🧘 Méditatif</div>
+<div class="mode-selector">
+    <button class="mode-btn active" onclick="setMode('empathique', this)">🌿 Empathique</button>
+    <button class="mode-btn" onclick="setMode('coach', this)">🚀 Coach</button>
+    <button class="mode-btn" onclick="setMode('meditatif', this)">🧘 Méditatif</button>
 </div>
 
-<div class="app-wrapper">
-    <div id="chat-messages">
+<div class="chat-container">
+    <div id="chat-messages" class="chat-messages">
         <div class="message assistant-message">
-            Bonjour ! Je suis VocalAide IA, ton espace d'écoute bienveillant. Comment te sens-tu aujourd'hui ?
+            <p>Bonjour ! Je suis VocalAide IA. Je suis ici pour t'écouter sans jugement. Comment te sens-tu ?</p>
         </div>
     </div>
-    <div id="typing" style="display:none; padding: 10px 20px; font-size: 0.75rem; color: #777;">VocalAide réfléchit...</div>
-    <div class="input-bar">
-        <textarea id="user-input" placeholder="Écrivez ici..." rows="1"></textarea>
+    <div class="typing-indicator" id="typing-indicator">VocalAide réfléchit...</div>
+    <div class="message-input">
+        <textarea id="user-input" placeholder="Parle-moi de ce que tu vis..." rows="1"></textarea>
         <button id="send-button">Envoyer</button>
     </div>
 </div>
 
-<div class="action-buttons">
-    <button class="btn btn-pdf" onclick="handlePdfRequest()">📋 Rapport Psychologue (PDF)</button>
-    <a href="https://vocalaide.org/compte/aide" class="btn btn-help">🆘 Aide humaine</a>
+<div class="action-group">
+    <button class="btn-action btn-pdf" onclick="generatePdfRapport()">📋 Rapport Psychologue (PDF)</button>
+    <a href="https://vocalaide.org/compte/aide" class="btn-action btn-aide">🆘 Aide humaine ?</a>
 </div>
 
 <footer>
@@ -138,36 +165,47 @@
     let currentTone = 'empathique';
     const { jsPDF } = window.jspdf;
 
-    function changeMode(mode, el) {
+    function setMode(mode, btn) {
         currentTone = mode;
-        document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('active'));
-        el.classList.add('active');
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
     }
 
-    async function handlePdfRequest() {
+    // Gestion de la modération (mauvais mots)
+    const badWords = ["calisse", "tabarnak", "hostie", "gueule"]; 
+    
+    function containsBadWords(text) {
+        return badWords.some(word => text.toLowerCase().includes(word));
+    }
+
+    async function generatePdfRapport() {
         window.isGeneratingPdf = true;
-        const userInput = document.getElementById('user-input');
-        userInput.value = "Génère mon résumé structuré pour mon psychologue s'il te plaît.";
+        const input = document.getElementById('user-input');
+        input.value = "Peux-tu me faire un résumé structuré de notre échange pour mon psychologue ?";
         document.getElementById('send-button').click();
     }
 
+    // Fonction appelée par chat.js quand l'IA a fini
     window.triggerPdfDownload = function(text) {
         const doc = new jsPDF();
-        doc.setFillColor(246, 130, 31); // Orange VocalAide
+        doc.setFillColor(246, 130, 31);
         doc.rect(0, 0, 210, 35, 'F');
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(18);
         doc.text("BILAN D'ACCOMPAGNEMENT VOCALAIDE", 105, 15, { align: 'center' });
         doc.setFontSize(10);
-        doc.text("Document confidentiel généré le " + new Date().toLocaleDateString(), 105, 25, { align: 'center' });
+        doc.text("Généré le " + new Date().toLocaleDateString(), 105, 25, { align: 'center' });
+        
         doc.setTextColor(40);
-        doc.setFontSize(12);
+        doc.setFontSize(11);
         const splitText = doc.splitTextToSize(text, 170);
         doc.text(splitText, 20, 50);
-        doc.save("VocalAide-Rapport-" + new Date().toISOString().slice(0,10) + ".pdf");
+        
+        doc.save("Rapport-VocalAide-" + new Date().toISOString().slice(0,10) + ".pdf");
         window.isGeneratingPdf = false;
-    }
+    };
 </script>
 <script src="chat.js"></script>
+
 </body>
 </html>
