@@ -20,11 +20,7 @@
 				--assistant-msg-bg: #f3f4f6;
 			}
 
-			* {
-				box-sizing: border-box;
-				margin: 0;
-				padding: 0;
-			}
+			* { box-sizing: border-box; margin: 0; padding: 0; }
 
 			body {
 				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -76,7 +72,6 @@
 				max-width: 80%;
 			}
 
-			.message p { white-space: pre-line; margin: 0; overflow-wrap: anywhere; }
 			.user-message { background-color: var(--user-msg-bg); align-self: flex-end; margin-left: auto; }
 			.assistant-message { background-color: var(--assistant-msg-bg); align-self: flex-start; }
 
@@ -92,9 +87,7 @@
 				padding: 0.75rem;
 				border: 1px solid var(--border-color);
 				border-radius: 4px;
-				font-family: inherit;
 				resize: none;
-				min-height: 44px;
 			}
 
 			#send-button {
@@ -105,11 +98,7 @@
 				border: none;
 				border-radius: 4px;
 				cursor: pointer;
-				transition: background-color 0.2s;
 			}
-
-			.typing-indicator { display: none; font-style: italic; color: var(--text-light); padding: 1rem; }
-			.typing-indicator.visible { display: block; }
 
 			footer { margin-top: 1rem; text-align: center; font-size: 0.85rem; color: #000000; }
 
@@ -119,24 +108,22 @@
 				background-color: var(--primary-color); color: white;
 				padding: 12px 20px; border-radius: 8px;
 				text-decoration: none; font-weight: bold;
-				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 				z-index: 1000;
 			}
 
 			/* Bouton Rapport (Gauche) */
-			.btn-rapport-fixe {
+			#report-btn {
 				position: fixed; bottom: 20px; left: 20px;
-				background-color: #1f2937; color: white;
+				background-color: #000000; color: white;
 				padding: 12px 20px; border-radius: 8px;
 				border: none; cursor: pointer; font-weight: bold;
-				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 				z-index: 1000;
 			}
 
 			@media (max-width: 600px) {
-				.btn-aide-fixe, .btn-rapport-fixe { bottom: 10px; padding: 8px 15px; font-size: 0.8rem; }
+				.btn-aide-fixe, #report-btn { bottom: 10px; padding: 8px 15px; font-size: 0.7rem; }
 				.btn-aide-fixe { right: 10px; }
-				.btn-rapport-fixe { left: 10px; }
+				#report-btn { left: 10px; }
 				footer { padding-bottom: 60px; }
 			}
 		</style>
@@ -144,72 +131,54 @@
 	<body>
 		<header>
 			<h1>Chat VocalAide IA</h1>
-			<p>Propulsé par Cloudflare Workers AI</p>
 		</header>
 
 		<div class="chat-container">
 			<div id="chat-messages" class="chat-messages">
 				<div class="message assistant-message">
-					<p>Bonjour ! Je suis VocalAide IA, ton espace d'écoute bienveillant. Je suis ici pour t'accompagner. Comment te sens-tu aujourd'hui ?</p>
+					<p>Bonjour ! Je suis VocalAide IA. Comment te sens-tu ?</p>
 				</div>
 			</div>
-			<div class="typing-indicator" id="typing-indicator">VocalAide IA réfléchit...</div>
 			<div class="message-input">
-				<textarea id="user-input" placeholder="Tapez votre message ici..." rows="1"></textarea>
+				<textarea id="user-input" placeholder="Tapez ici..."></textarea>
 				<button id="send-button">Envoyer</button>
 			</div>
 		</div>
 
 		<footer><p>Tout droit réservé &copy; 2022-2026 par VocalAide</p></footer>
 
-		<button class="btn-rapport-fixe" id="btn-pdf">Générer Rapport PDF</button>
+		<button id="report-btn">Générer Rapport PDF</button>
 		<a href="https://vocalaide.org/compte/aide" class="btn-aide-fixe">Besoin d'aide humaine ?</a>
 
 		<script>
-			// Correction de l'envoi
-			const sendBtn = document.getElementById('send-button');
-			const input = document.getElementById('user-input');
-			const messagesContainer = document.getElementById('chat-messages');
-
-			sendBtn.addEventListener('click', () => {
-				const text = input.value.trim();
-				if (text) {
+			// Répare l'envoi du bouton
+			document.getElementById('send-button').onclick = function() {
+				const input = document.getElementById('user-input');
+				if (input.value.trim() !== "") {
 					const div = document.createElement('div');
 					div.className = 'message user-message';
-					div.innerHTML = `<p>${text}</p>`;
-					messagesContainer.appendChild(div);
-					input.value = '';
-					messagesContainer.scrollTop = messagesContainer.scrollHeight;
-					// Ton chat.js prendra la relève ici pour la réponse IA
+					div.innerHTML = `<p>${input.value}</p>`;
+					document.getElementById('chat-messages').appendChild(div);
+					input.value = "";
+					// Ici, chat.js prendra le relais pour la réponse de l'IA
 				}
-			});
+			};
 
-			// Génération du PDF
-			document.getElementById('btn-pdf').addEventListener('click', () => {
+			// Logique PDF simple
+			document.getElementById('report-btn').onclick = function() {
 				const { jsPDF } = window.jspdf;
 				const doc = new jsPDF();
 				let y = 20;
-
-				doc.setFontSize(16);
-				doc.text("Rapport de séance - VocalAide IA", 20, y);
-				y += 10;
-				doc.setFontSize(10);
-				doc.text("Résumé : Historique complet de la discussion pour usage professionnel.", 20, y);
+				doc.text("Rapport VocalAide IA - vocalaide.org", 20, y);
 				y += 15;
-
 				document.querySelectorAll('.message').forEach(m => {
-					const isUser = m.classList.contains('user-message');
-					const label = isUser ? "PATIENT : " : "IA : ";
-					const text = label + m.innerText;
-					const splitText = doc.splitTextToSize(text, 170);
-					if (y + (splitText.length * 7) > 280) { doc.addPage(); y = 20; }
-					doc.text(splitText, 20, y);
-					y += (splitText.length * 7) + 2;
+					const txt = (m.classList.contains('user-message') ? "PATIENT: " : "IA: ") + m.innerText;
+					const split = doc.splitTextToSize(txt, 170);
+					doc.text(split, 20, y);
+					y += (split.length * 7);
 				});
-
-				doc.text("Fait par VocalAide IA de vocalaide.org", 20, 290);
-				doc.save("Rapport_VocalAide.pdf");
-			});
+				doc.save("rapport.pdf");
+			};
 		</script>
 	</body>
 </html>
