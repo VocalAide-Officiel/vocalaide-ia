@@ -125,6 +125,7 @@
 					<button class="btn-option" onclick="generatePDF('full')">📄 Rapport de séance complet</button>
 					<button class="btn-option" onclick="generatePDF('summary')">🧠 Résumé émotionnel (Patient seul)</button>
 					<button class="btn-option" onclick="generatePDF('analysis')">🤖 Analyse IA (Résumé et Bilan)</button>
+					<button class="btn-option" onclick="sendEmailReport()">📧 Envoyer par courriel</button>
 				</div>
 				<div class="btn-close-modal" onclick="closeModal()">Annuler</div>
 			</div>
@@ -154,6 +155,31 @@
     // Ferme la fenêtre
     function closeModal() {
         modal.style.display = 'none';
+    }
+
+    // Nouvelle fonction pour l'envoi par courriel
+    function sendEmailReport() {
+        const dest = prompt("Entrez l'adresse courriel du destinataire (ex: votre psychologue) :");
+        if (!dest) return; // Si l'utilisateur annule
+
+        let bodyText = "Bonjour,\n\nVoici le rapport de la séance généré via VocalAide IA :\n\n";
+        bodyText += "--------------------------------------------------\n";
+        
+        const messages = document.querySelectorAll('.message');
+        messages.forEach((msg) => {
+            const isUser = msg.classList.contains('user-message');
+            const label = isUser ? "PATIENT : " : "VOCALAIDE IA : ";
+            bodyText += label + msg.innerText + "\n\n";
+        });
+        
+        bodyText += "--------------------------------------------------\n";
+        bodyText += "Généré par vocalaide.org\n";
+
+        const subject = encodeURIComponent("Rapport de séance - VocalAide");
+        const body = encodeURIComponent(bodyText);
+
+        window.location.href = `mailto:${dest}?subject=${subject}&body=${body}`;
+        closeModal();
     }
 
     // Gère la génération PDF
@@ -390,4 +416,6 @@ Génère uniquement le texte demandé, sans aucune phrase d'introduction ni de c
 
         doc.save(fileName);
     }
-</script>
+		</script>
+	</body>
+</html>
