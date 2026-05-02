@@ -108,18 +108,6 @@
 				<button id="report-button" class="btn" title="Télécharger le rapport PDF">📋 Rapport</button>
 			</div>
 		</div>
-	
-		<div id="reportModal" class="modal-overlay">
-    <div class="modal-content">
-        <h2 style="color: var(--primary-color);">Choisissez votre rapport</h2>
-        <p style="font-size: 0.9rem; color: var(--text-light);">Comment souhaitez-vous exporter votre séance ?</p>
-        <div class="modal-options">
-            <button class="btn-option" onclick="generatePDF('full')">📄 Discussion complète</button>
-            <button class="btn-option" onclick="generatePDF('summary')">🧠 Résumé de mes émotions</button>
-        </div>
-        <div class="btn-close-modal" onclick="closeModal()">Annuler</div>
-    </div>
-</div>
 
 		<footer>
 			<p>Tout droit réservé &copy; 2022-2026 par VocalAide</p>
@@ -127,130 +115,99 @@
 
 		<script src="chat.js"></script>
 
-		<script>
-    const modal = document.getElementById('reportModal');
-
-    // Ouvre la fenêtre quand on clique sur le bouton Rapport
-    document.getElementById('report-button').addEventListener('click', () => {
-        const messages = document.querySelectorAll('.message');
-        if (messages.length <= 6) {
-            alert("Il n'y a pas encore assez d'échanges pour générer un rapport.");
-            return;
-        }
-        modal.style.display = 'flex';
-    });
-
-    // Ferme la fenêtre
-    function closeModal() {
-        modal.style.display = 'none';
-    }
-
-    // Gère la génération des deux types de PDF
-    async function generatePDF(type) {
-        closeModal();
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        
-        // ... (Insère ici ton code de génération PDF fourni précédemment) ...
-     
-		// --- OPTION 1 : TOUTE LA DISCUSSION (Ce que tu avais déjà) ---
-        doc.save(type === 'full' ? "Discussion_VocalAide.pdf" : "Bilan_Emotions_VocalAide.pdf");
-    }
-</script>
-
 		<a href="https://vocalaide.org/compte/aide" class="btn-aide-fixe">Besoin d'aide humaine ?</a>
 
-	async function generatePDF(type) {
-        closeModal();
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        const messages = document.querySelectorAll('.message');
-        let y = 20;
+		<script>
+			document.getElementById('report-button').addEventListener('click', async () => {
+				const { jsPDF } = window.jspdf;
+				const doc = new jsPDF();
+				const messages = document.querySelectorAll('.message');
+				
+				if (messages.length <= 6) {
+					alert("Il n'y a pas encore assez de messages pour générer un rapport.");
+					return;
+				}
 
-        // --- TON DESIGN D'ENTÊTE (CONSERVÉ) ---
-        doc.setFillColor(246, 130, 31); 
-        doc.rect(0, 0, 210, 40, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(22);
-        doc.setFont("helvetica", "bold");
-        
-        // Titre qui change selon le bouton cliqué
-        const titre = (type === 'full') ? "RAPPORT DE SÉANCE" : "BILAN ÉMOTIONNEL";
-        doc.text(titre, 105, 20, { align: "center" });
-        
-        doc.setFontSize(12);
-        doc.text("VocalAide IA - Soutien et Écoute", 105, 30, { align: "center" });
+				let y = 20;
 
-        y = 50;
-        doc.setTextColor(40, 40, 40);
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text(`Document généré le : ${new Date().toLocaleString()}`, 20, y);
-        doc.text("Source officielle : vocalaide.org", 20, y + 5);
+				// Design de l'Entête
+				doc.setFillColor(246, 130, 31); 
+				doc.rect(0, 0, 210, 40, 'F');
+				
+				doc.setTextColor(255, 255, 255);
+				doc.setFontSize(22);
+				doc.setFont("helvetica", "bold");
+				doc.text("RAPPORT DE SÉANCE", 105, 20, { align: "center" });
+				
+				doc.setFontSize(12);
+				doc.text("VocalAide IA - Soutien et Écoute", 105, 30, { align: "center" });
 
-        y += 20;
-        doc.setDrawColor(246, 130, 31);
-        doc.setLineWidth(0.5);
-        doc.line(20, y, 190, y);
-        y += 10;
+				y = 50;
+				doc.setTextColor(40, 40, 40);
+				doc.setFontSize(10);
+				doc.setFont("helvetica", "normal");
+				doc.text(`Document généré le : ${new Date().toLocaleString()}`, 20, y);
+				doc.text("Source officielle : vocalaide.org", 20, y + 5);
 
-        // --- LOGIQUE DE SÉLECTION DU CONTENU ---
-        if (type === 'full') {
-            // OPTION 1 : TON CODE ORIGINAL (DISCUSSION COMPLÈTE)
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.text("1. Résumé de l'entretien (IA)", 20, y);
-            y += 10;
-            doc.setFontSize(11);
-            doc.setFont("helvetica", "italic");
-            const resumeTexte = "Ce document contient l'historique de la discussion tenue avec l'IA VocalAide. Il est destiné à accompagner le patient dans son parcours de soin.";
-            doc.text(doc.splitTextToSize(resumeTexte, 170), 20, y);
-            y += 20;
+				y += 20;
+				doc.setDrawColor(246, 130, 31);
+				doc.setLineWidth(0.5);
+				doc.line(20, y, 190, y);
+				
+				y += 10;
+				doc.setFontSize(14);
+				doc.setFont("helvetica", "bold");
+				doc.text("1. Résumé de l'entretien (IA)", 20, y);
+				
+				y += 10;
+				doc.setFontSize(11);
+				doc.setFont("helvetica", "italic");
+				const resumeTexte = "Ce document contient l'historique de la discussion tenue avec l'IA VocalAide. Il est destiné à accompagner le patient dans son parcours de soin et peut être remis à un psychologue ou médecin pour faciliter l'échange sur son état émotionnel actuel.";
+				const linesResume = doc.splitTextToSize(resumeTexte, 170);
+				doc.text(linesResume, 20, y);
 
-            messages.forEach((msg) => {
-                const isUser = msg.classList.contains('user-message');
-                const label = isUser ? "PATIENT :" : "VOCALAIDE IA :";
-                if (y > 270) { doc.addPage(); y = 20; }
-                doc.setFontSize(10);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(isUser ? 246 : 60, isUser ? 130 : 60, isUser ? 31 : 60);
-                doc.text(label, 20, y);
-                y += 5;
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(0, 0, 0);
-                const splitText = doc.splitTextToSize(msg.innerText, 165);
-                doc.text(splitText, 25, y);
-                y += (splitText.length * 5) + 7;
-            });
-        } else {
-            // OPTION 2 : RÉSUMÉ ÉMOTIONNEL (UNIQUEMENT PAROLES PATIENT)
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.text("Synthèse des paroles du patient", 20, y);
-            y += 15;
+				y += (linesResume.length * 6) + 15;
 
-            messages.forEach((msg) => {
-                if (msg.classList.contains('user-message')) {
-                    if (y > 270) { doc.addPage(); y = 20; }
-                    doc.setTextColor(246, 130, 31);
-                    doc.text("•", 20, y);
-                    doc.setTextColor(0, 0, 0);
-                    doc.setFontSize(10);
-                    const splitMsg = doc.splitTextToSize(msg.innerText, 165);
-                    doc.text(splitMsg, 25, y);
-                    y += (splitMsg.length * 5) + 5;
-                }
-            });
-        }
+				doc.setFontSize(14);
+				doc.setFont("helvetica", "bold");
+				doc.text("2. Intégralité des échanges", 20, y);
+				y += 10;
 
-        // --- TON PIED DE PAGE (CONSERVÉ) ---
-        const pageCount = doc.internal.getNumberOfPages();
-        for(let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            doc.setFontSize(8);
-            doc.setTextColor(150);
-            doc.text("Rapport confidentiel généré par VocalAide IA - vocalaide.org", 105, 290, { align: "center" });
-        }
+				messages.forEach((msg) => {
+					const isUser = msg.classList.contains('user-message');
+					const label = isUser ? "PATIENT :" : "VOCALAIDE IA :";
+					const content = msg.innerText;
 
-        doc.save(type === 'full' ? "Rapport_VocalAide_Discussion.pdf" : "Bilan_Emotions_VocalAide.pdf");
-    }
+					if (y > 270) {
+						doc.addPage();
+						y = 20;
+					}
+
+					doc.setFontSize(10);
+					doc.setFont("helvetica", "bold");
+					doc.setTextColor(isUser ? 246 : 60, isUser ? 130 : 60, isUser ? 31 : 60);
+					doc.text(label, 20, y);
+					
+					y += 5;
+					doc.setFont("helvetica", "normal");
+					doc.setTextColor(0, 0, 0);
+					const splitText = doc.splitTextToSize(content, 165);
+					doc.text(splitText, 25, y);
+					
+					y += (splitText.length * 5) + 7;
+				});
+
+				const pageCount = doc.internal.getNumberOfPages();
+				for(let i = 1; i <= pageCount; i++) {
+					doc.setPage(i);
+					doc.setFontSize(8);
+					doc.setTextColor(150);
+					doc.text("Rapport confidentiel généré par VocalAide IA - vocalaide.org", 105, 290, { align: "center" });
+					doc.text(`Page ${i} / ${pageCount}`, 190, 290);
+				}
+
+				doc.save("Rapport_VocalAide_Discussion.pdf");
+			});
+		</script>
+	</body>
+</html>
