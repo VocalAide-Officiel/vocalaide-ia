@@ -85,6 +85,14 @@
 				.btn-aide-fixe { bottom: 10px; right: 10px; padding: 8px 15px; font-size: 0.8rem; }
 				footer { padding-bottom: 60px; }
 			}
+
+			/* --- STYLE DE LA FENÊTRE MODALE --- */
+			.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center; }
+			.modal-content { background: white; padding: 2rem; border-radius: 12px; max-width: 450px; width: 90%; text-align: center; }
+			.modal-options { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+			.btn-option { padding: 15px; border: 2px solid var(--border-color); border-radius: 8px; cursor: pointer; background: white; font-weight: bold; transition: 0.2s; font-family: inherit; }
+			.btn-option:hover { border-color: var(--primary-color); background: #fffaf5; }
+			.btn-close-modal { margin-top: 15px; color: var(--text-light); cursor: pointer; text-decoration: underline; font-size: 0.9rem; }
 		</style>
 	</head>
 	<body>
@@ -109,6 +117,18 @@
 			</div>
 		</div>
 
+		<div id="reportModal" class="modal-overlay">
+			<div class="modal-content">
+				<h2 style="color: var(--primary-color);">Votre Rapport</h2>
+				<p style="font-size: 0.9rem; color: var(--text-light);">Comment souhaitez-vous exporter votre séance ?</p>
+				<div class="modal-options">
+					<button class="btn-option" onclick="generatePDF('full')">📄 Rapport de séance complet</button>
+					<button class="btn-option" onclick="generatePDF('summary')">🧠 Résumé émotionnel (Patient seul)</button>
+				</div>
+				<div class="btn-close-modal" onclick="closeModal()">Annuler</div>
+			</div>
+		</div>
+
 		<footer>
 			<p>Tout droit réservé &copy; 2022-2026 par VocalAide</p>
 		</footer>
@@ -118,19 +138,33 @@
 		<a href="https://vocalaide.org/compte/aide" class="btn-aide-fixe">Besoin d'aide humaine ?</a>
 
 		<script>
-			document.getElementById('report-button').addEventListener('click', async () => {
-				const { jsPDF } = window.jspdf;
-				const doc = new jsPDF();
+			const modal = document.getElementById('reportModal');
+
+			// Ouvre la fenêtre quand on clique sur le bouton Rapport
+			document.getElementById('report-button').addEventListener('click', () => {
 				const messages = document.querySelectorAll('.message');
-				
 				if (messages.length <= 6) {
 					alert("Il n'y a pas encore assez de messages pour générer un rapport.");
 					return;
 				}
+				modal.style.display = 'flex';
+			});
 
+			// Ferme la fenêtre
+			function closeModal() {
+				modal.style.display = 'none';
+			}
+
+			// Gère la génération PDF
+			async function generatePDF(type) {
+				closeModal();
+				const { jsPDF } = window.jspdf;
+				const doc = new jsPDF();
+				const messages = document.querySelectorAll('.message');
+				
 				let y = 20;
 
-				// Design de l'Entête
+				// --- DESIGN DE L'ENTÊTE (CONSERVÉ À L'IDENTIQUE) ---
 				doc.setFillColor(246, 130, 31); 
 				doc.rect(0, 0, 210, 40, 'F');
 				
@@ -155,48 +189,98 @@
 				doc.line(20, y, 190, y);
 				
 				y += 10;
-				doc.setFontSize(14);
-				doc.setFont("helvetica", "bold");
-				doc.text("1. Résumé de l'entretien (IA)", 20, y);
-				
-				y += 10;
-				doc.setFontSize(11);
-				doc.setFont("helvetica", "italic");
-				const resumeTexte = "Ce document contient l'historique de la discussion tenue avec l'IA VocalAide. Il est destiné à accompagner le patient dans son parcours de soin et peut être remis à un psychologue ou médecin pour faciliter l'échange sur son état émotionnel actuel.";
-				const linesResume = doc.splitTextToSize(resumeTexte, 170);
-				doc.text(linesResume, 20, y);
 
-				y += (linesResume.length * 6) + 15;
-
-				doc.setFontSize(14);
-				doc.setFont("helvetica", "bold");
-				doc.text("2. Intégralité des échanges", 20, y);
-				y += 10;
-
-				messages.forEach((msg) => {
-					const isUser = msg.classList.contains('user-message');
-					const label = isUser ? "PATIENT :" : "VOCALAIDE IA :";
-					const content = msg.innerText;
-
-					if (y > 270) {
-						doc.addPage();
-						y = 20;
-					}
-
-					doc.setFontSize(10);
+				if (type === 'full') {
+					// ==========================================
+					// OPTION 1 : TON CODE ET TEXTES ORIGINAUX
+					// ==========================================
+					doc.setFontSize(14);
 					doc.setFont("helvetica", "bold");
-					doc.setTextColor(isUser ? 246 : 60, isUser ? 130 : 60, isUser ? 31 : 60);
-					doc.text(label, 20, y);
+					doc.text("1. Résumé de l'entretien (IA)", 20, y);
 					
-					y += 5;
-					doc.setFont("helvetica", "normal");
-					doc.setTextColor(0, 0, 0);
-					const splitText = doc.splitTextToSize(content, 165);
-					doc.text(splitText, 25, y);
-					
-					y += (splitText.length * 5) + 7;
-				});
+					y += 10;
+					doc.setFontSize(11);
+					doc.setFont("helvetica", "italic");
+					const resumeTexte = "Ce document contient l'historique de la discussion tenue avec l'IA VocalAide. Il est destiné à accompagner le patient dans son parcours de soin et peut être remis à un psychologue ou médecin pour faciliter l'échange sur son état émotionnel actuel.";
+					const linesResume = doc.splitTextToSize(resumeTexte, 170);
+					doc.text(linesResume, 20, y);
 
+					y += (linesResume.length * 6) + 15;
+
+					doc.setFontSize(14);
+					doc.setFont("helvetica", "bold");
+					doc.text("2. Intégralité des échanges", 20, y);
+					y += 10;
+
+					messages.forEach((msg) => {
+						const isUser = msg.classList.contains('user-message');
+						const label = isUser ? "PATIENT :" : "VOCALAIDE IA :";
+						const content = msg.innerText;
+
+						if (y > 270) {
+							doc.addPage();
+							y = 20;
+						}
+
+						doc.setFontSize(10);
+						doc.setFont("helvetica", "bold");
+						doc.setTextColor(isUser ? 246 : 60, isUser ? 130 : 60, isUser ? 31 : 60);
+						doc.text(label, 20, y);
+						
+						y += 5;
+						doc.setFont("helvetica", "normal");
+						doc.setTextColor(0, 0, 0);
+						const splitText = doc.splitTextToSize(content, 165);
+						doc.text(splitText, 25, y);
+						
+						y += (splitText.length * 5) + 7;
+					});
+
+				} else {
+					// ==========================================
+					// OPTION 2 : RÉSUMÉ (Paroles du patient avec même style)
+					// ==========================================
+					doc.setFontSize(14);
+					doc.setFont("helvetica", "bold");
+					doc.text("1. Synthèse des paroles du patient", 20, y);
+					
+					y += 10;
+					doc.setFontSize(11);
+					doc.setFont("helvetica", "italic");
+					const resumeTexte = "Ce document isole uniquement vos messages afin de mettre en lumière vos émotions et les points abordés, facilitant ainsi l'analyse par un professionnel de santé.";
+					const linesResume = doc.splitTextToSize(resumeTexte, 170);
+					doc.text(linesResume, 20, y);
+
+					y += (linesResume.length * 6) + 15;
+
+					doc.setFontSize(14);
+					doc.setFont("helvetica", "bold");
+					doc.text("2. Extraits de la discussion", 20, y);
+					y += 10;
+
+					messages.forEach((msg) => {
+						if (msg.classList.contains('user-message')) {
+							if (y > 270) {
+								doc.addPage();
+								y = 20;
+							}
+
+							doc.setTextColor(246, 130, 31);
+							doc.setFont("helvetica", "bold");
+							doc.text("•", 20, y);
+							
+							doc.setTextColor(0, 0, 0);
+							doc.setFont("helvetica", "normal");
+							doc.setFontSize(10);
+							const splitMsg = doc.splitTextToSize(msg.innerText, 160);
+							doc.text(splitMsg, 25, y);
+							
+							y += (splitMsg.length * 5) + 5;
+						}
+					});
+				}
+
+				// --- DESIGN DU PIED DE PAGE (CONSERVÉ À L'IDENTIQUE) ---
 				const pageCount = doc.internal.getNumberOfPages();
 				for(let i = 1; i <= pageCount; i++) {
 					doc.setPage(i);
@@ -206,8 +290,8 @@
 					doc.text(`Page ${i} / ${pageCount}`, 190, 290);
 				}
 
-				doc.save("Rapport_VocalAide_Discussion.pdf");
-			});
+				doc.save(type === 'full' ? "Rapport_VocalAide_Discussion.pdf" : "Bilan_Emotions_VocalAide.pdf");
+			}
 		</script>
 	</body>
 </html>
