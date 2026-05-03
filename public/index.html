@@ -93,6 +93,24 @@
 			.btn-option { padding: 15px; border: 2px solid var(--border-color); border-radius: 8px; cursor: pointer; background: white; font-weight: bold; transition: 0.2s; font-family: inherit; }
 			.btn-option:hover { border-color: var(--primary-color); background: #fffaf5; }
 			.btn-close-modal { margin-top: 15px; color: var(--text-light); cursor: pointer; text-decoration: underline; font-size: 0.9rem; }
+
+			/* --- STYLE DES BOUTONS DE MODE --- */
+			.btn-mode {
+				padding: 10px 15px;
+				border: 1px solid var(--primary-color);
+				border-radius: 6px;
+				background: white;
+				color: var(--primary-color);
+				font-weight: bold;
+				cursor: pointer;
+				transition: 0.2s;
+				text-align: left;
+				font-size: 0.9rem;
+			}
+			.btn-mode:hover {
+				background: var(--primary-color);
+				color: white;
+			}
 		</style>
 	</head>
 	<body>
@@ -103,8 +121,17 @@
 
 		<div class="chat-container">
 			<div id="chat-messages" class="chat-messages">
-				<div class="message assistant-message">
+				<div class="message assistant-message" id="welcome-message">
 					<p>Bonjour ! Je suis VocalAide IA, ton espace d'écoute bienveillant. Comment te sens-tu aujourd'hui ?</p>
+					
+					<div id="mode-selection" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-color);">
+						<p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 12px;">Parce que chaque moment est différent, vous avez le contrôle total sur la posture de l'IA. Avant de me répondre, choisissez le mode qui vous convient :</p>
+						<div style="display: flex; flex-direction: column; gap: 8px;">
+							<button class="btn-mode" onclick="selectMode('empathique')">❤️ Mode Empathique<br><span style="font-size: 0.8em; font-weight: normal; color: var(--text-color);">Écoute douce, sans jugement, idéale pour vider son sac et se sentir compris.</span></button>
+							<button class="btn-mode" onclick="selectMode('coach')">🎯 Mode Coaching<br><span style="font-size: 0.8em; font-weight: normal; color: var(--text-color);">L'IA devient proactive, pose des questions stimulantes et vous aide à agir.</span></button>
+							<button class="btn-mode" onclick="selectMode('psychologue')">🧠 Mode Psychologue<br><span style="font-size: 0.8em; font-weight: normal; color: var(--text-color);">Analyse profonde, exploration de vos pensées et accompagnement clinique.</span></button>
+						</div>
+					</div>
 				</div>
 			</div>
 
@@ -140,11 +167,45 @@
 		<a href="https://vocalaide.org/compte/aide" class="btn-aide-fixe">Besoin d'aide humaine ?</a>
 
 		<script>
+	// --- GESTION DES MODES D'IA ---
+	function selectMode(mode) {
+		let promptMode = "";
+		let modeName = "";
+		
+		if (mode === 'psychologue') {
+			modeName = "Psychologue";
+			promptMode = "Instruction système silencieuse : L'utilisateur vient de choisir le 'Mode Psychologue'. Pour toute la suite de cette conversation, agis comme un psychologue clinicien professionnel. Sois analytique, aide l'utilisateur à faire des liens, pose des questions profondes pour explorer son subconscient, tout en restant très bienveillant.";
+		} else if (mode === 'coach') {
+			modeName = "Coaching";
+			promptMode = "Instruction système silencieuse : L'utilisateur vient de choisir le 'Mode Coaching'. Pour toute la suite de cette conversation, agis comme un coach de vie proactif. Pose des questions stimulantes, aide l'utilisateur à définir des étapes concrètes, encourage-le à passer à l'action et à surmonter ses défis.";
+		} else if (mode === 'empathique') {
+			modeName = "Empathique";
+			promptMode = "Instruction système silencieuse : L'utilisateur vient de choisir le 'Mode Empathique'. Pour toute la suite de cette conversation, offre une écoute douce, chaleureuse et sans jugement. Contente-toi de valider ses émotions, de le comprendre et de le laisser vider son sac. Ne cherche pas forcément à trouver des solutions à sa place.";
+		}
+
+		// Cache le menu de sélection
+		document.getElementById('mode-selection').style.display = 'none';
+
+		// Injecte silencieusement le contexte dans l'historique de l'IA (chat.js)
+		if (typeof chatHistory !== 'undefined') {
+			chatHistory.push({ role: "user", content: promptMode });
+		}
+
+		// Ajoute un message visuel de confirmation dans le chat
+		const chatMessages = document.getElementById('chat-messages');
+		const confirmDiv = document.createElement('div');
+		confirmDiv.className = 'message assistant-message';
+		confirmDiv.innerHTML = `<p>✅ <strong>Mode ${modeName} activé.</strong> Je suis prêt. Prenez votre temps pour me répondre et me dire ce que vous avez sur le cœur.</p>`;
+		chatMessages.appendChild(confirmDiv);
+		
+		// Descend le scroll vers le bas
+		chatMessages.scrollTop = chatMessages.scrollHeight;
+	}
+
+    // --- GESTION DES RAPPORTS ---
     const modal = document.getElementById('reportModal');
 
-    // Ouvre la fenêtre quand on clique sur le bouton Rapport
     document.getElementById('report-button').addEventListener('click', () => {
-        // On vérifie le chatHistory (venant de chat.js)
         if (chatHistory.length <= 6) {
             alert("Il n'y a pas encore assez de messages pour générer un rapport.");
             return;
@@ -152,15 +213,13 @@
         modal.style.display = 'flex';
     });
 
-    // Ferme la fenêtre
     function closeModal() {
         modal.style.display = 'none';
     }
 
-    // Nouvelle fonction pour l'envoi par courriel
     function sendEmailReport() {
         const dest = prompt("Entrez l'adresse courriel du destinataire (ex: votre psychologue) :");
-        if (!dest) return; // Si l'utilisateur annule
+        if (!dest) return; 
 
         let bodyText = "Bonjour,\n\nVoici le rapport de la séance généré via VocalAide IA :\n\n";
         bodyText += "--------------------------------------------------\n";
@@ -182,7 +241,6 @@
         closeModal();
     }
 
-    // Gère la génération PDF
     async function generatePDF(type) {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
@@ -190,16 +248,14 @@
         
         let y = 20;
 
-        // --- 1. GESTION DE L'IA (Seulement pour l'Option 3) ---
         if (type === 'analysis') {
             const btnAnalysis = document.querySelector("button[onclick=\"generatePDF('analysis')\"]");
             const originalText = btnAnalysis.innerHTML;
-            btnAnalysis.innerHTML = "⏳ Lecture et analyse en cours...délais 1 min. max";
+            btnAnalysis.innerHTML = "⏳ Lecture et analyse en cours...";
             btnAnalysis.disabled = true;
             btnAnalysis.style.opacity = "0.7";
 
             try {
-                // Préparation de la consigne
                 const promptIA = `Analyse l'intégralité de notre conversation précédente.
 Consigne très stricte : Sépare ta réponse en deux parties exactes en utilisant le séparateur "|||".
 Partie 1 : Un résumé simple d'environ 100 mots.
@@ -208,7 +264,6 @@ Génère uniquement le texte demandé, sans aucune phrase d'introduction ni de c
 
                 const messagesForAnalysis = [...chatHistory, { role: "user", content: promptIA }];
 
-                // Appel de l'API
                 const reponseAPI = await fetch("/api/chat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -217,7 +272,6 @@ Génère uniquement le texte demandé, sans aucune phrase d'introduction ni de c
 
                 if (!reponseAPI.ok) throw new Error("Erreur de réponse du serveur");
 
-                // Lecture du texte généré par l'IA
                 const reader = reponseAPI.body.getReader();
                 const decoder = new TextDecoder();
                 let texteIA = "";
@@ -257,7 +311,6 @@ Génère uniquement le texte demandé, sans aucune phrase d'introduction ni de c
                     if (sawDone) break;
                 }
 
-                // Découpage du texte en 2 parties
                 const parties = texteIA.split("|||");
                 var texteResumeSimple = parties[0] ? parties[0].trim() : "Résumé non disponible.";
                 var texteAnalyseComplete = parties[1] ? parties[1].trim() : "Analyse non disponible.";
@@ -271,16 +324,13 @@ Génère uniquement le texte demandé, sans aucune phrase d'introduction ni de c
                 return; 
             }
 
-            // Restaure le bouton une fois fini
             btnAnalysis.innerHTML = originalText;
             btnAnalysis.disabled = false;
             btnAnalysis.style.opacity = "1";
         }
 
-        // On ferme la fenêtre de choix maintenant que le chargement (s'il y en avait un) est terminé
         closeModal();
 
-        // --- 2. DESIGN DE L'ENTÊTE (Pour tous les PDF) ---
         doc.setFillColor(246, 130, 31); 
         doc.rect(0, 0, 210, 40, 'F');
         doc.setTextColor(255, 255, 255);
@@ -307,7 +357,6 @@ Génère uniquement le texte demandé, sans aucune phrase d'introduction ni de c
         doc.line(20, y, 190, y);
         y += 10;
 
-        // --- 3. CONTENU SELON L'OPTION CHOISIE ---
         if (type === 'full') {
             doc.setFontSize(14);
             doc.setFont("helvetica", "bold");
@@ -399,7 +448,6 @@ Génère uniquement le texte demandé, sans aucune phrase d'introduction ni de c
             y += (splitAnalyse.length * 5) + 10;
         }
 
-        // --- 4. PIED DE PAGE ET TÉLÉCHARGEMENT ---
         const pageCount = doc.internal.getNumberOfPages();
         for(let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
